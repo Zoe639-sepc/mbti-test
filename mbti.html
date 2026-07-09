@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>完整版MBTI 16型人格测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft Yahei",system-ui}
+body{background:#f6f7fc;padding:16px;max-width:720px;margin:0 auto}
+.wrap{background:#fff;border-radius:20px;padding:28px;box-shadow:0 4px 16px #e1e4f5}
+h1{text-align:center;color:#4a57b8;margin-bottom:24px;font-size:24px}
+.desc{color:#666;font-size:14px;text-align:center;margin-bottom:30px;line-height:1.6}
+.question{display:none;margin:24px 0}
+.question.active{display:block}
+.q-num{color:#888;font-size:14px;margin-bottom:8px}
+.q-text{font-size:17px;color:#222;margin-bottom:18px;line-height:1.7}
+.opt{border:1px solid #d2d8f0;border-radius:12px;padding:14px;margin:10px 0;cursor:pointer;transition:0.2s}
+.opt:hover{background:#f0f4ff;border-color:#6b7cd8}
+.opt.selected{background:#596cd8;color:#fff;border-color:#596cd8}
+.btn-box{margin-top:30px;display:flex;gap:12px}
+.btn{flex:1;padding:15px;border:none;border-radius:12px;color:#fff;font-size:17px;cursor:pointer}
+#prevBtn{background:#888;}
+#nextBtn{background:#596cd8;}
+.btn:disabled{background:#b0b9e8;cursor:not-allowed}
+#resultBox{display:none}
+.type-title{font-size:36px;font-weight:bold;color:#4a57b8;text-align:center;margin:20px 0}
+.type-sub{font-size:20px;color:#666;text-align:center;margin-bottom:24px}
+.block{margin:20px 0}
+.block h3{color:#4a57b8;margin-bottom:10px;font-size:18px}
+.block p{line-height:1.8;color:#333;font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MBTI 60题完整版人格测试</h1>
+  <p class="desc">共60题，请根据真实的自己选择，无好坏之分，完成后生成完整人格解析</p>
+  <div id="testPanel"></div>
+  <div id="resultBox">
+    <div class="type-title" id="typeCode"></div>
+    <div class="type-sub" id="typeName"></div>
+    <div class="block">
+      <h3>核心特质</h3>
+      <p id="coreDesc"></p>
+    </div>
+    <div class="block">
+      <h3>优势特长</h3>
+      <p id="goodDesc"></p>
+    </div>
+    <div class="block">
+      <h3>短板与成长建议</h3>
+      <p id="badDesc"></p>
+    </div>
+    <div class="block">
+      <h3>适合职业方向</h3>
+      <p id="jobDesc"></p>
+    </div>
+    <div class="btn-box">
+      <button class="btn" onclick="restartTest()">重新测试</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 60题完整题库 4维度 E/I S/N T/F J/P
+const questions = [
+  // E/I 外向/内向 1-15
+  {q:"参加多人聚会后，你通常精力充沛？",dim:"E"},
+  {q:"长时间社交后，你需要独处恢复精力？",dim:"I"},
+  {q:"遇到心事，更愿意找人倾诉而非自己消化？",dim:"E"},
+  {q:"空闲周末，更偏爱独自宅家而非出门社交？",dim:"I"},
+  {q:"认识新朋友时你主动搭话？",dim:"E"},
+  {q:"陌生场合你习惯沉默观望，不主动融入？",dim:"I"},
+  {q:"想法喜欢当场说出来，边说边梳理思路？",dim:"E"},
+  {q:"习惯先在心里想完整，再开口表达？",dim:"I"},
+  {q:"热闹环境会让你感到放松愉悦？",dim:"E"},
+  {q:"嘈杂人群会让你烦躁疲惫？",dim:"I"},
+  {q:"朋友邀约你很少拒绝，乐于外出？",dim:"E"},
+  {q:"频繁社交会让你产生消耗感？",dim:"I"},
+  {q:"解决问题习惯和他人讨论碰撞思路？",dim:"E"},
+  {q:"独立思考才能想出最优方案？",dim:"I"},
+  {q:"你很容易和陌生人快速熟络？",dim:"E"},
+  // S/N 实感/直觉 16-30
+  {q:"做事更关注当下实际细节，而非未来幻想？",dim:"S"},
+  {q:"更容易联想事物背后的可能性与灵感？",dim:"N"},
+  {q:"看书更在意真实案例、事实数据？",dim:"S"},
+  {q:"更喜欢脑洞、隐喻、抽象概念？",dim:"N"},
+  {q:"描述一件事，习惯精准还原细节？",dim:"S"},
+  {q:"描述事情喜欢概括整体、忽略琐碎细节？",dim:"N"},
+  {q:"更相信亲身经历的真实体验？",dim:"S"},
+  {q:"更相信直觉预感、内在灵感？",dim:"N"},
+  {q:"规划行程优先考虑现实可行条件？",dim:"S"},
+  {q:"规划时先畅想理想状态，再考虑落地？",dim:"N"},
+  {q:"学习新知识先看实操步骤？",dim:"S"},
+  {q:"学习先理解底层逻辑与整体框架？",dim:"N"},
+  {q:"你更看重事物当下的实用价值？",dim:"S"},
+  {q:"你更看重事物长远的潜力与意义？",dim:"N"},
+  {q:"你很少脑补故事、联想隐藏含义？",dim:"S"},
+  // T/F 思考/情感 31-45
+  {q:"做决定优先客观逻辑、利弊权衡？",dim:"T"},
+  {q:"做决定优先顾及他人情绪、人际关系？",dim:"F"},
+  {q:"争论对错时，你更在意道理公平？",dim:"T"},
+  {q:"争论时你更担心伤害对方感情？",dim:"F"},
+  {q:"评价一件事习惯理性客观打分？",dim:"T"},
+  {q:"评价一件事习惯带入共情感受？",dim:"F"},
+  {q:"规则标准应该统一，不因人变通？",dim:"T"},
+  {q:"规则可以根据人情灵活调整？",dim:"F"},
+  {q:"批评他人时直接直白，不委婉修饰？",dim:"T"},
+  {q:"批评他人会刻意委婉，照顾对方自尊？",dim:"F"},
+  {q:"公平比善意更重要？",dim:"T"},
+  {q:"善意包容比绝对公平更重要？",dim:"F"},
+  {q:"冲突中优先理清对错责任？",dim:"T"},
+  {q:"冲突中优先缓和气氛、修复关系？",dim:"F"},
+  {q:"你很难因为共情心软改变判断？",dim:"T"},
+  // J/P 判断/感知 46-60
+  {q:"生活喜欢提前制定计划，按计划执行？",dim:"J"},
+  {q:"生活随性灵活，讨厌被计划束缚？",dim:"P"},
+  {q:"任务习惯提前完成，不拖延到截止日？",dim:"J"},
+  {q:"习惯临近截止才进入高效状态？",dim:"P"},
+  {q:"桌面、房间会定期整理保持整洁？",dim:"J"},
+  {q:"物品随性摆放，不刻意规整？",dim:"P"},
+  {q:"一件事没定下来会让你焦虑不安？",dim:"J"},
+  {q:"保留多种选择、不急于下定论更舒服？",dim:"P"},
+  {q:"出游会提前做好完整行程安排？",dim:"J"},
+  {q:"出游喜欢随机随性，走到哪算哪？",dim:"P"},
+  {q:"喜欢快速收尾、确定结果？",dim:"J"},
+  {q:"喜欢保留余地，持续调整完善？",dim:"P"},
+  {q:"突发变动会打乱你的心态？",dim:"J"},
+  {q:"突发变化反而带来新鲜感？",dim:"P"},
+  {q:"你习惯把待办清单全部完成再休息？",dim:"J"},
+];
+
+// 16型完整解析库
+const typeData = {
+  ISTJ:{
+    name:"检查员",
+    core:"严谨务实、稳重可靠，重视规则与责任，注重细节，踏实守信，擅长落地执行",
+    good:"超强责任心、细心严谨、守时靠谱、抗压稳定、擅长处理琐碎实务",
+    bad:"容易固执保守、不懂变通、过度纠结细节、不擅长表达情绪、抗拒改变",
+    job:"行政、财务、审计、工程、医护、档案管理、质检、法务执行"
+  },
+  ISFJ:{
+    name:"守卫者",
+    core:"温柔体贴、默默付出，共情力强，擅长照顾他人，细心包容，重视稳定关系",
+    good:"共情细腻、耐心包容、任劳任怨、观察力强、擅长维护人际关系",
+    bad:"容易讨好他人、忽略自身需求、不擅长拒绝、害怕冲突、过度内耗",
+    job:"护士、教师、人力资源、客服、社工、后勤、母婴护理、心理咨询助理"
+  },
+  ESTJ:{
+    name:"总经理",
+    core:"干练果断、秩序感强，擅长组织管理，看重效率与公平，务实有领导力",
+    good:"执行力强、逻辑清晰、擅长统筹、公正负责、落地能力极强",
+    bad:"强势刻板、忽略他人感受、控制欲强、不喜欢天马行空的想法",
+    job:"企业管理、运营、销售管理、公职、项目统筹、供应链管理"
+  },
+  ESFJ:{
+    name:"执政官",
+    core:"热情友善、擅长社交，乐于照顾群体氛围，重视人情，擅长协调人际关系",
+    good:"擅长沟通、热心助人、团队粘合剂、共情力强、照顾集体情绪",
+    bad:"在意他人评价、容易迎合大众、害怕独处、难接受小众观点",
+    job:"公关、活动策划、教师、人事、线下运营、销售、社群管理"
+  },
+  ISTP:{
+    name:"鉴赏家",
+    core:"冷静理性、动手能力强，擅长拆解问题，低调务实，喜欢实操探索",
+    good:"临场应变强、动手能力突出、客观冷静、擅长解决技术难题",
+    bad:"不善表达情感、随性散漫、不喜长期规划、回避复杂人际",
+    job:"机械维修、程序员、设计、汽修、刑侦、手工技术、数据分析"
+  },
+  ISFP:{
+    name:"探险家",
+    core:"温和内敛、审美细腻，尊重自我感受，不喜冲突，热爱真实体验",
+    good:"感知敏锐、审美出众、待人温柔、踏实专注、尊重他人个性",
+    bad:"回避矛盾、容易自我否定、缺乏长远规划、不擅长表达诉求",
+    job:"美术、摄影、手工、花艺、医护、文创、宠物护理、美食创作"
+  },
+  ESTP:{
+    name:"企业家",
+    core:"行动力拉满、灵活应变，享受当下，擅长实操社交，敢于冒险尝试",
+    good:"临场反应快、口才出众、适应力强、擅长落地、不怕挑战",
+    bad:"缺乏长远规划、容易冲动、耐心不足、讨厌枯燥理论",
+    job:"销售、市场、公关、创业、线下商务、活动执行、谈判专员"
+  },
+  ESFP:{
+    name:"表演者",
+    core:"活泼开朗、热爱生活，擅长带动氛围，追求真实体验，共情直白",
+    good:"感染力强、乐观开朗、擅长活跃气氛、真诚直白、适应力强",
+    bad:"容易三分钟热度、害怕枯燥理论、在意即时快乐、缺乏深度思考",
+    job:"演艺、主持、美妆、文旅、线下门店、活动主持、短视频出镜"
+  },
+  INTJ:{
+    name:"建筑师",
+    core:"独立深刻、擅长长远布局，逻辑缜密，追求创新，自带战略思维",
+    good:"战略眼光、逻辑顶尖、自学能力强、洞察力出众、目标坚定",
+    bad:"高冷疏离、完美主义、容易否定他人、不擅长共情琐碎情绪",
+    job:"产品架构、科研、战略策划、程序员、金融分析、学术研究"
+  },
+  INFJ:{
+    name:"咨询师",
+    core:"洞察力极强、内心深邃，理想主义，共情深远，追求精神共鸣",
+    good:"看透人心、擅长引导他人、道德感强、创意深刻、擅长深度沟通",
+    bad:"精神内耗严重、过度共情他人、完美主义、不善世俗社交",
+    job:"心理咨询、写作、教育、人文策划、公益、内容深度创作"
+  },
+  ENTJ:{
+    name:"指挥官",
+    core:"天生领导者、目标导向，逻辑犀利，擅长统筹规划，自信果断",
+    good:"战略统筹、领导力强、抗压、敢做决策、推动变革能力强",
+    bad:"强势强势、忽略情绪、急躁、控制欲强、缺乏耐心倾听",
+    job:"企业高管、创业、战略咨询、投资、项目总负责人、商业策划"
+  },
+  ENFJ:{
+    name:"主人公",
+    core:"富有感染力、擅长引导他人，理想主义，共情充沛，擅长凝聚团队",
+    good:"鼓舞人心、擅长育人、共情通透、社交领导力、价值观正向",
+    bad:"过度在意他人成长、容易自我消耗、过度理想主义、不懂取舍",
+    job:"培训讲师、心理咨询、管理、教育、品牌公关、社群领袖"
+  },
+  INTP:{
+    name:"逻辑学家",
+    core:"痴迷理论、客观冷静，喜欢拆解底层规律，脑洞大，热爱思辨",
+    good:"逻辑推理顶尖、好奇心强、擅长抽象思考、包容多元观点",
+    bad:"拖延严重、不擅长落地执行、社交被动、容易空想不行动",
+    job:"程序员、数学科研、理论研究、数据分析、算法、文史哲学研究"
+  },
+  INFP:{
+    name:"调停者",
+    core:"纯粹理想主义、内心柔软，坚守自我价值观，追求精神自由，厌恶虚伪",
+    good:"内心真诚、共情细腻、创意丰富、坚守本心、包容包容",
+    bad:"重度内耗、回避现实冲突、拖延、容易自我否定、空想多行动少",
+    job:"文学写作、插画、独立文创、心理咨询、人文教育、诗歌创作"
+  },
+  ENTP:{
+    name:"辩论家",
+    core:"思维跳脱、热爱思辨，创意源源不断，擅长多角度拆解观点，爱挑战",
+    good:"创意丰富、口才出众、学习快速、擅长创新、不怕质疑权威",
+    bad:"容易抬杠、缺乏耐心深耕、三分钟热度、忽略落地细节",
+    job:"策划、广告、法律、创业、新媒体、商业谈判、创意研发"
+  },
+  ENFP:{
+    name:"竞选者",
+    core:"乐观浪漫、脑洞巨大，热爱新鲜事物，共情充沛，感染力强",
+    good:"创意无限、乐观治愈、擅长鼓舞他人、适应力强、真诚热情",
+    bad:"容易分心、拖延、难长期坚持枯燥工作、想法太多难以落地",
+    job:"新媒体、策划、创意文案、教育、文旅、品牌营销、自由创作"
+  }
+};
+
+let currentIdx = 0;
+// 存储每一题选择的分数，返回时恢复选择
+let answerRecord = Array(questions.length).fill(null);
+let score = {E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0};
+const testPanel = document.getElementById("testPanel");
+const resultBox = document.getElementById("resultBox");
+
+// 渲染题目（返回时自动回填之前选的答案）
+function renderQuestion(){
+  testPanel.innerHTML = "";
+  const item = questions[currentIdx];
+  const qWrap = document.createElement("div");
+  qWrap.className = "question active";
+  qWrap.innerHTML = `
+    <div class="q-num">第${currentIdx+1}题 / 共${questions.length}题</div>
+    <div class="q-text">${item.q}</div>
+    <div class="opt" data-score="1">完全符合我</div>
+    <div class="opt" data-score="0.5">比较符合我</div>
+    <div class="opt" data-score="0">中立/一般</div>
+    <div class="opt" data-score="-0.5">不太符合我</div>
+    <div class="opt" data-score="-1">完全不符合我</div>
+    <div class="btn-box">
+      <button class="btn" id="prevBtn" ${currentIdx===0?"disabled":""}>上一题</button>
+      <button class="btn" id="nextBtn" disabled>${currentIdx === questions.length-1 ? "查看结果" : "下一题"}</button>
+    </div>
+  `;
+  testPanel.appendChild(qWrap);
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const allOpts = document.querySelectorAll(".opt");
+
+  // 回填历史选择
+  const oldScore = answerRecord[currentIdx];
+  if(oldScore !== null){
+    allOpts.forEach(opt=>{
+      if(Number(opt.dataset.score) === oldScore){
+        opt.classList.add("selected");
+        nextBtn.disabled = false;
+      }
+    })
+  }
+
+  // 点击选项保存答案
+  allOpts.forEach(opt=>{
+    opt.onclick = ()=>{
+      allOpts.forEach(o=>o.classList.remove("selected"));
+      opt.classList.add("selected");
+      const val = Number(opt.dataset.score);
+      // 先扣除这题旧分数
+      if(answerRecord[currentIdx] !== null){
+        score[item.dim] -= answerRecord[currentIdx];
+      }
+      // 记录新答案、加分
+      answerRecord[currentIdx] = val;
+      score[item.dim] += val;
+      nextBtn.disabled = false;
+    }
+  })
+
+  // 上一题
+  prevBtn.onclick = ()=>{
+    currentIdx--;
+    renderQuestion();
+  }
+
+  // 下一题/出结果
+  nextBtn.onclick = ()=>{
+    if(currentIdx === questions.length -1){
+      calcResult();
+      return;
+    }
+    currentIdx++;
+    renderQuestion();
+  }
+}
+
+// 计算人格类型
+function calcResult(){
+  let type = "";
+  type += score.E >= score.I ? "E" : "I";
+  type += score.S >= score.N ? "S" : "N";
+  type += score.T >= score.F ? "T" : "F";
+  type += score.J >= score.P ? "J" : "P";
+  const info = typeData[type];
+  testPanel.style.display = "none";
+  resultBox.style.display = "block";
+  document.getElementById("typeCode").innerText = type;
+  document.getElementById("typeName").innerText = info.name;
+  document.getElementById("coreDesc").innerText = info.core;
+  document.getElementById("goodDesc").innerText = info.good;
+  document.getElementById("badDesc").innerText = info.bad;
+  document.getElementById("jobDesc").innerText = info.job;
+}
+
+// 重新测试清空所有记录
+function restartTest(){
+  currentIdx = 0;
+  answerRecord = Array(questions.length).fill(null);
+  score = {E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0};
+  testPanel.style.display = "block";
+  resultBox.style.display = "none";
+  renderQuestion();
+}
+renderQuestion();
+</script>
+</body>
+</html>
